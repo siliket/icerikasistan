@@ -1,74 +1,97 @@
 ﻿from pytrends.request import TrendReq
-from streamlit.components.v1 import html
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+import time
 from datetime import datetime
-import requests # requests kütüphanesini import ettiğinizden emin olun
+import calendar
+import requests
+import sqlite3
+import hashlib
+import secrets
 
-# games.py dosyanızdan import edildiği varsayılır.
-# Eğer bu dosyanız yoksa veya içeriğini değiştirdiyseniz,
-# bu değişkenleri kodunuzun başında manuel olarak tanımlamanız gerekebilir.
-
+# Oyun veritabanı ve kapak resimleri
 GAME_COVERS = {
     # Aksiyon
-    "Cyberpunk 2077": "https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg",
+    "Cyberpunk 2077": "https://cdn.akamai.steamstatic.com/steam/apps/1091500/header.jpg",
     "God of War: Ragnarök": "https://image.api.playstation.com/vulcan/ap/rnd/202207/1210/4xJ8XB3bi888QTLZYdl7Oi0s.png",
-    "Devil May Cry 5": "https://cdn.cloudflare.steamstatic.com/steam/apps/601150/header.jpg",
-    "Horizon Forbidden West": "https://image.api.playstation.com/vulcan/ap/rnd/202107/1612/5wLgspQ7kP4538ZXHKJqQd9K.png",
+    "Devil May Cry 5": "https://cdn.akamai.steamstatic.com/steam/apps/601150/header.jpg",
+    "Horizon Forbidden West": "https://image.api.playstation.com/vulcan/ap/rnd/202107/3100/yIa8STLMmCyhj48fGDpaAuRM.jpg",
 
     # RPG
-    "The Witcher 3: Wild Hunt": "https://cdn.cloudflare.steamstatic.com/steam/apps/292030/header.jpg",
+    "The Witcher 3: Wild Hunt": "https://cdn.akamai.steamstatic.com/steam/apps/292030/header.jpg",
     "Elden Ring": "https://image.api.playstation.com/vulcan/ap/rnd/202108/0410/4oBNK4UcD8sR7klc8JCT9iST.png",
     "Final Fantasy VII Remake": "https://image.api.playstation.com/vulcan/ap/rnd/202008/1020/T45iRN1bhiWcJUzST6UFGBvO.png",
-    "Dragon Age: Inquisition": "https://cdn.cloudflare.steamstatic.com/steam/apps/1222690/header.jpg",
+    "Dragon Age: Inquisition": "https://cdn.akamai.steamstatic.com/steam/apps/1222690/header.jpg",
 
     # Strateji
-    "Civilization VI": "https://cdn.cloudflare.steamstatic.com/steam/apps/289070/header.jpg",
-    "XCOM 2": "https://cdn.cloudflare.steamstatic.com/steam/apps/268500/header.jpg",
-    "Total War: Warhammer III": "https://cdn.cloudflare.steamstatic.com/steam/apps/1142710/header.jpg",
-    "StarCraft II": "https://cdn.cloudflare.steamstatic.com/steam/apps/212160/header.jpg",
+    "Civilization VI": "https://cdn.akamai.steamstatic.com/steam/apps/289070/header.jpg",
+    "XCOM 2": "https://cdn.akamai.steamstatic.com/steam/apps/268500/header.jpg",
+    "Total War: Warhammer III": "https://cdn.akamai.steamstatic.com/steam/apps/1142710/header.jpg",
+    "StarCraft II": "https://cdn.akamai.steamstatic.com/steam/apps/212160/header.jpg",
 
     # FPS
-    "DOOM Eternal": "https://cdn.cloudflare.steamstatic.com/steam/apps/782330/header.jpg",
-    "Overwatch 2": "https://cdn.cloudflare.steamstatic.com/steam/apps/2357570/header.jpg",
-    "Call of Duty: Modern Warfare II": "https://cdn.cloudflare.steamstatic.com/steam/apps/1938090/header.jpg",
+    "DOOM Eternal": "https://cdn.akamai.steamstatic.com/steam/apps/782330/header.jpg",
+    "Overwatch 2": "https://cdn.akamai.steamstatic.com/steam/apps/2357570/header.jpg",
+    "Call of Duty: Modern Warfare II": "https://cdn.akamai.steamstatic.com/steam/apps/1938090/header.jpg",
 
     # Macera
     "The Legend of Zelda: Tears of the Kingdom": "https://assets.nintendo.com/image/upload/ar_16:9,c_lpad,w_1240/b_white/f_auto/q_auto/ncom/software/switch/70010000063709/32b858e0948e48be9a84d70d35274c7ed7d0a1aacdc45d7d0b0d9e0cb9a3d340",
-    "Red Dead Redemption 2": "https://cdn.cloudflare.steamstatic.com/steam/apps/1174180/header.jpg",
+    "Red Dead Redemption 2": "https://cdn.akamai.steamstatic.com/steam/apps/1174180/header.jpg",
     "Uncharted 4: A Thief's End": "https://image.api.playstation.com/vulcan/ap/rnd/202201/0711/8vekWyQAjUIPhq5k8wB6Tj3s.png",
 
     # Survival Horror
-    "Resident Evil 4 Remake": "https://cdn.cloudflare.steamstatic.com/steam/apps/2050650/header.jpg",
+    "Resident Evil 4 Remake": "https://cdn.akamai.steamstatic.com/steam/apps/2050650/header.jpg",
     "The Last of Us Part I": "https://image.api.playstation.com/vulcan/ap/rnd/202206/0720/eEczyEMDd2BLa3dtkGJVE9At.png",
 
     # Spor
-    "FIFA 23": "https://cdn.cloudflare.steamstatic.com/steam/apps/1811260/header.jpg",
-    "NBA 2K23": "https://cdn.cloudflare.steamstatic.com/steam/apps/1919590/header.jpg",
+    "FIFA 23": "https://cdn.akamai.steamstatic.com/steam/apps/1811260/header.jpg",
+    "NBA 2K23": "https://cdn.akamai.steamstatic.com/steam/apps/1919590/header.jpg",
 
     # Simülasyon
-    "Microsoft Flight Simulator": "https://cdn.cloudflare.steamstatic.com/steam/apps/1250410/header.jpg",
-    "Cities: Skylines": "https://cdn.cloudflare.steamstatic.com/steam/apps/255710/header.jpg",
+    "Microsoft Flight Simulator": "https://cdn.akamai.steamstatic.com/steam/apps/1250410/header.jpg",
+    "Cities: Skylines": "https://cdn.akamai.steamstatic.com/steam/apps/255710/header.jpg",
 
     # Battle Royale
     "Fortnite": "https://cdn2.unrealengine.com/egs-social-fortnite-1920x1080-1920x1080-87971829e331.png",
-    "Apex Legends": "https://cdn.cloudflare.steamstatic.com/steam/apps/1172470/header.jpg",
+    "Apex Legends": "https://cdn.akamai.steamstatic.com/steam/apps/1172470/header.jpg",
 
     # MMO
-    "Final Fantasy XIV": "https://cdn.cloudflare.steamstatic.com/steam/apps/39210/header.jpg",
-    "World of Warcraft: Dragonflight": "https://assets-prd.ignimgs.com/2022/04/19/world-of-warcraft-dragonflight-button-01-1650389461383.jpg",
+    "Final Fantasy XIV": "https://cdn.akamai.steamstatic.com/steam/apps/39210/header.jpg",
+    "World of Warcraft: Dragonflight": "https://bnetcmsus-a.akamaihd.net/cms/blog_header/dh/DH6B2UZ8HZGH1671044479341.jpg",
 
     # Platform
-    "Hollow Knight": "https://cdn.cloudflare.steamstatic.com/steam/apps/367520/header.jpg",
-    "Celeste": "https://cdn.cloudflare.steamstatic.com/steam/apps/504230/header.jpg",
+    "Hollow Knight": "https://cdn.akamai.steamstatic.com/steam/apps/367520/header.jpg",
+    "Celeste": "https://cdn.akamai.steamstatic.com/steam/apps/504230/header.jpg",
 
     # Fighting
-    "Street Fighter 6": "https://cdn.cloudflare.steamstatic.com/steam/apps/1364780/header.jpg",
-    "Tekken 7": "https://cdn.cloudflare.steamstatic.com/steam/apps/389730/header.jpg"
+    "Street Fighter 6": "https://cdn.akamai.steamstatic.com/steam/apps/1364780/header.jpg",
+    "Tekken 7": "https://cdn.akamai.steamstatic.com/steam/apps/389730/header.jpg",
+    
+    # Ek oyunlar
+    "Grand Theft Auto V": "https://cdn.akamai.steamstatic.com/steam/apps/271590/header.jpg",
+    "Minecraft": "https://cdn.akamai.steamstatic.com/steam/apps/322330/header.jpg",
+    "League of Legends": "https://cdn.akamai.steamstatic.com/steam/apps/41700/header.jpg",
+    "Valorant": "https://cdn.akamai.steamstatic.com/steam/apps/1276810/header.jpg",
+    "Counter-Strike: Global Offensive": "https://cdn.akamai.steamstatic.com/steam/apps/730/header.jpg",
+    "Among Us": "https://cdn.akamai.steamstatic.com/steam/apps/945360/header.jpg",
+    "Animal Crossing: New Horizons": "https://assets.nintendo.com/image/upload/ar_16:9,c_lpad,w_1240/b_white/f_auto/q_auto/ncom/software/switch/70010000027669/3319e2c1cae6d3e80d88a5da0b482d7f6c7a97cacf5b200a1c0a6a5b0d3ad956",
+    "Assassin's Creed Valhalla": "https://cdn.akamai.steamstatic.com/steam/apps/2208920/header.jpg",
+    "Battlefield 2042": "https://cdn.akamai.steamstatic.com/steam/apps/1517290/header.jpg",
+    "Halo Infinite": "https://cdn.akamai.steamstatic.com/steam/apps/1240440/header.jpg",
+    "Genshin Impact": "https://cdn.akamai.steamstatic.com/steam/apps/1683310/header.jpg",
+    "Roblox": "https://cdn.akamai.steamstatic.com/steam/apps/2670960/header.jpg",
+    "Rocket League": "https://cdn.akamai.steamstatic.com/steam/apps/252950/header.jpg",
+    "Destiny 2": "https://cdn.akamai.steamstatic.com/steam/apps/1085660/header.jpg",
+    "Warframe": "https://cdn.akamai.steamstatic.com/steam/apps/230410/header.jpg",
+    "GTA Online": "https://cdn.akamai.steamstatic.com/steam/apps/271590/header.jpg",
+    "Rainbow Six Siege": "https://cdn.akamai.steamstatic.com/steam/apps/359550/header.jpg",
+    "Dead by Daylight": "https://cdn.akamai.steamstatic.com/steam/apps/381210/header.jpg",
+    "Sea of Thieves": "https://cdn.akamai.steamstatic.com/steam/apps/1172620/header.jpg",
+    "Fall Guys": "https://cdn.akamai.steamstatic.com/steam/apps/1097150/header.jpg"
 }
 
-game_database = {
+game_database = {   
     "Cyberpunk 2077": {
         "genre": "Aksiyon",
         "release": 2020,
@@ -260,11 +283,131 @@ game_database = {
         "release": 2015,
         "metacritic": 82,
         "platforms": ["PC", "PS4", "Xbox One"]
+    },
+    "Grand Theft Auto V": {
+        "genre": "Aksiyon",
+        "release": 2013,
+        "metacritic": 96,
+        "platforms": ["PC", "PS4", "PS5", "Xbox Series X"]
+    },
+    "Minecraft": {
+        "genre": "Sandbox",
+        "release": 2011,
+        "metacritic": 93,
+        "platforms": ["PC", "PS4", "Xbox One", "Switch", "Mobile"]
+    },
+    "League of Legends": {
+        "genre": "MOBA",
+        "release": 2009,
+        "metacritic": 78,
+        "platforms": ["PC"]
+    },
+    "Valorant": {
+        "genre": "FPS",
+        "release": 2020,
+        "metacritic": 80,
+        "platforms": ["PC"]
+    },
+    "Counter-Strike: Global Offensive": {
+        "genre": "FPS",
+        "release": 2012,
+        "metacritic": 83,
+        "platforms": ["PC"]
+    },
+    "Among Us": {
+        "genre": "Sosyal Dedüksiyon",
+        "release": 2018,
+        "metacritic": 85,
+        "platforms": ["PC", "Mobile", "Switch"]
+    },
+    "Animal Crossing: New Horizons": {
+        "genre": "Simülasyon",
+        "release": 2020,
+        "metacritic": 90,
+        "platforms": ["Nintendo Switch"]
+    },
+    "Assassin's Creed Valhalla": {
+        "genre": "Aksiyon-Macera",
+        "release": 2020,
+        "metacritic": 84,
+        "platforms": ["PC", "PS4", "PS5", "Xbox Series X"]
+    },
+    "Battlefield 2042": {
+        "genre": "FPS",
+        "release": 2021,
+        "metacritic": 68,
+        "platforms": ["PC", "PS4", "PS5", "Xbox Series X"]
+    },
+    "Halo Infinite": {
+        "genre": "FPS",
+        "release": 2021,
+        "metacritic": 87,
+        "platforms": ["PC", "Xbox Series X"]
+    },
+    "Genshin Impact": {
+        "genre": "Action-RPG",
+        "release": 2020,
+        "metacritic": 86,
+        "platforms": ["PC", "PS4", "Mobile"]
+    },
+    "Roblox": {
+        "genre": "MMO",
+        "release": 2006,
+        "metacritic": 70,
+        "platforms": ["PC", "Mobile", "Xbox Series X"]
+    },
+    "Rocket League": {
+        "genre": "Spor",
+        "release": 2015,
+        "metacritic": 86,
+        "platforms": ["PC", "PS4", "Xbox One", "Switch"]
+    },
+    "Destiny 2": {
+        "genre": "FPS",
+        "release": 2017,
+        "metacritic": 85,
+        "platforms": ["PC", "PS4", "PS5", "Xbox Series X"]
+    },
+    "Warframe": {
+        "genre": "MMO",
+        "release": 2013,
+        "metacritic": 83,
+        "platforms": ["PC", "PS4", "Xbox One", "Switch"]
+    },
+    "GTA Online": {
+        "genre": "MMO",
+        "release": 2013,
+        "metacritic": 80,
+        "platforms": ["PC", "PS4", "PS5", "Xbox Series X"]
+    },
+    "Rainbow Six Siege": {
+        "genre": "FPS",
+        "release": 2015,
+        "metacritic": 79,
+        "platforms": ["PC", "PS4", "PS5", "Xbox Series X"]
+    },
+    "Dead by Daylight": {
+        "genre": "Survival Horror",
+        "release": 2016,
+        "metacritic": 71,
+        "platforms": ["PC", "PS4", "Xbox One", "Switch"]
+    },
+    "Sea of Thieves": {
+        "genre": "Macera",
+        "release": 2018,
+        "metacritic": 69,
+        "platforms": ["PC", "Xbox Series X"]
+    },
+    "Fall Guys": {
+        "genre": "Battle Royale",
+        "release": 2020,
+        "metacritic": 80,
+        "platforms": ["PC", "PS4", "Switch", "Xbox Series X"]
     }
 }
 
-
-pytrends = TrendReq(hl='tr-TR', tz=360) # Türkçe ve UTC+3 için
+# Google Trends ve RAWG API ayarları
+pytrends = TrendReq(hl='tr-TR', tz=360)
 RAWG_API_KEY = "a04a54d4a1384a64b182fc19616f00c4"
 BASE_URL = "https://api.rawg.io/api/games"
 
@@ -272,15 +415,18 @@ BASE_URL = "https://api.rawg.io/api/games"
 # TEMEL AYARLAR
 # ----------------------
 st.set_page_config(
-    page_title="Game Advisor Pro",
-    page_icon="🎮",
+    page_title="Oyun Pusulası",
+    page_icon="🧭",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-@st.cache_data(ttl=3600)  # 1 saat önbellekleme
-def get_optimized_image(url):
-    return f"https://images.weserv.nl/?url={url}&w=400&h=225&fit=cover"
+@st.cache_data(ttl=3600)
+def get_optimized_image(url, width=800, height=450):
+    """Daha büyük ve yüksek kaliteli görseller için optimizasyon"""
+    return f"https://images.weserv.nl/?url={url}&w={width}&h={height}&fit=cover&output=webp&q=90"
+
+
 
 # ----------------------
 # ORTAK FONKSİYONLAR
@@ -300,10 +446,9 @@ def get_game_popularity(game_name):
 
         if data["count"] > 0:
             game_id = data["results"][0]["id"]
-            # Detaylı istatistikler için ikinci bir istek
             details_url = f"{BASE_URL}/{game_id}"
             details_response = requests.get(details_url, params={"key": RAWG_API_KEY})
-            details_response.raise_for_status() # Hata durumunda istisna fırlatır
+            details_response.raise_for_status()
             details = details_response.json()
 
             return {
@@ -317,21 +462,150 @@ def get_game_popularity(game_name):
         st.error(f"API Hatası: {str(e)}")
         return None
 
+def save_feedback(data):
+    df = pd.DataFrame([data])
+    df.to_csv("feedback.csv", mode='a', header=False, index=False)
+
+def load_feedback():
+    try:
+        return pd.read_csv("feedback.csv", names=["game", "rating", "comment", "timestamp"])
+    except FileNotFoundError:
+        return pd.DataFrame()
+# ----------------------
+# YAYINCI ARAÇLARI FONKSİYONLARI
+# ----------------------
+
+def get_best_stream_times(game_name):
+    """Bir oyun için en iyi yayın saatlerini analiz et"""
+    try:
+        # Google Trends'ten saatlik veri çek
+        pytrends.build_payload([game_name], timeframe='now 7-d', geo='TR', gprop='')
+        hourly_data = pytrends.interest_over_time()
+        
+        if hourly_data.empty or game_name not in hourly_data.columns:
+            return None
+            
+        # Saatlere göre grupla
+        hourly_data['hour'] = hourly_data.index.hour
+        hourly_avg = hourly_data.groupby('hour')[game_name].mean()
+        
+        # En iyi 3 saati belirle
+        best_hours = hourly_avg.sort_values(ascending=False).head(3).index.tolist()
+        best_hours_str = ", ".join([f"{h}:00-{h+1}:00" for h in best_hours])
+        
+        return {
+            "best_hours": best_hours_str,
+            "chart_data": hourly_avg
+        }
+    except Exception as e:
+        st.error(f"Yayın saati analiz hatası: {str(e)}")
+        return None
+
+def schedule_stream():
+    """Yayın planlama arayüzü"""
+    with st.form("stream_schedule_form"):
+        st.subheader("📅 Yayın Planlama")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            game = st.selectbox("Oyun Seçin", list(game_database.keys()), key="schedule_game")
+            stream_date = st.date_input("Yayın Tarihi", min_value=datetime.today())
+        with col2:
+            start_time = st.time_input("Başlangıç Saati", value=datetime.strptime("20:00", "%H:%M"))
+            duration = st.selectbox("Süre (saat)", [1, 2, 3, 4])
+        
+        notes = st.text_area("Plan Notları", placeholder="Yayın içeriği, özel etkinlikler...")
+        
+        if st.form_submit_button("Planı Kaydet"):
+            # Yayın planını session state'e kaydet
+            if "stream_schedules" not in st.session_state:
+                st.session_state.stream_schedules = []
+                
+            new_schedule = {
+                "game": game,
+                "date": stream_date.strftime("%Y-%m-%d"),
+                "start_time": start_time.strftime("%H:%M"),
+                "duration": duration,
+                "notes": notes
+            }
+            
+            st.session_state.stream_schedules.append(new_schedule)
+            st.success("✅ Yayın planı kaydedildi! Bildirimlerinizi kontrol edin.")
+    
+    # Kayıtlı planları göster
+    if "stream_schedules" in st.session_state and st.session_state.stream_schedules:
+        st.subheader("⏰ Yaklaşan Yayın Planları")
+        for idx, schedule in enumerate(st.session_state.stream_schedules):
+            with st.expander(f"{schedule['game']} - {schedule['date']} {schedule['start_time']}", expanded=False):
+                st.markdown(f"""
+                **Tarih:** {schedule['date']}  
+                **Saat:** {schedule['start_time']} ({schedule['duration']} saat)  
+                **Notlar:** {schedule['notes']}
+                """)
+                
+                # Planı silme butonu
+                if st.button("Planı Sil", key=f"delete_{idx}"):
+                    del st.session_state.stream_schedules[idx]
+                    st.rerun()
+
+def social_engagement():
+    """Sosyal medya etkileşim analizi"""
+    st.subheader("📱 Sosyal Medya Etkileşimi")
+    
+    # Oyun seçimi
+    game = st.selectbox("Analiz Edilecek Oyun", list(game_database.keys()), key="social_game")
+    
+    # Sahte verilerle etkileşim analizi
+    if st.button("Analiz Et", key="analyze_social"):
+        with st.spinner(f"{game} için sosyal medya analizi yapılıyor..."):
+            time.sleep(2)
+            
+            # Rastgele veriler oluştur
+            platforms = ["Twitter", "Instagram", "YouTube", "TikTok", "Reddit"]
+            data = {
+                "platform": platforms,
+                "etkilesim": [round(10000 + i*5000) for i in range(len(platforms))],
+                "paylasim": [round(500 + i*200) for i in range(len(platforms))]
+            }
+            df = pd.DataFrame(data)
+            
+            # Görselleştirme
+            fig = px.bar(
+                df, 
+                x="platform", 
+                y="etkilesim", 
+                title=f"{game} - Platform Bazında Etkileşim",
+                labels={"etkilesim": "Toplam Etkileşim", "platform": "Platform"},
+                color="platform",
+                text="etkilesim"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Tavsiyeler
+            st.info("""
+            **📈 İçerik Tavsiyeleri:**
+            - YouTube'da "Nasıl Yapılır?" videoları yüksek ilgi görüyor
+            - TikTok'ta kısa oyun içi klip paylaşımları etkileşimi %40 artırabilir
+            - Cumartesi günleri 20:00-22:00 arası canlı yayınlar daha fazla izleyici çekiyor
+            """)
+
+# ----------------------
+# OYUN DETAY VE KART FONKSİYONLARI
+# ----------------------
+
 def show_game_details():
-    # Seçilen oyunun session_state'te olup olmadığını ve boş olup olmadığını kontrol edin
+    # Seçilen oyun kontrolü
     if "selected_game" not in st.session_state or st.session_state.selected_game is None or st.session_state.selected_game == "":
         st.info("Oyun detaylarını görmek için lütfen Ana Sayfa'dan bir oyun seçin veya tıklayın.")
-        return # Fonksiyondan çık, çünkü seçilen oyun yok
+        return
 
     game_name = st.session_state.selected_game
 
-    # Şimdi game_name'in game_database'de olup olmadığını kontrol edin
     if game_name not in game_database:
         st.warning(f"'{game_name}' oyunu veritabanımızda bulunamadı. Lütfen farklı bir oyun seçin.")
-        return # Fonksiyondan çık
+        return
 
-    # Artık game_name'in geçerli ve game_database'de olduğundan eminiz
-    details = game_database.get(game_name, {}) # .get() kullanarak güvenli erişim
+    details = game_database.get(game_name, {})
 
     with st.container():
         st.markdown('<div id="game-details"></div>', unsafe_allow_html=True)
@@ -339,7 +613,6 @@ def show_game_details():
 
         col1, col2 = st.columns([1, 2])
         with col1:
-            # Resim URL'si kontrolü, eğer GAME_COVERS içinde yoksa varsayılan resim göster
             image_url = GAME_COVERS.get(game_name, "https://via.placeholder.com/400x225?text=Resim+Yok")
             st.image(image_url, use_container_width=True)
         with col2:
@@ -355,7 +628,7 @@ def show_game_details():
                 try:
                     params = {"key": RAWG_API_KEY, "search": game_name}
                     response = requests.get("https://api.rawg.io/api/games", params=params)
-                    response.raise_for_status() # Hata durumunda istisna fırlatır
+                    response.raise_for_status()
                     data = response.json()
 
                     if data["count"] > 0:
@@ -370,7 +643,7 @@ def show_game_details():
                             st.metric("Ortalama Oynama Süresi", f"{details_data.get('playtime', 0)} saat")
                         with col2:
                             st.metric("Topluluk Puanı", f"{details_data.get('rating', 0):.2f}")
-                            st.progress(details_data.get("rating", 0)/5) # Puanı 5 üzerinden ilerleme çubuğuna çevir
+                            st.progress(details_data.get("rating", 0)/5)
                     else:
                         st.info("RAWG API'sinde bu oyun için detaylı bilgi bulunamadı.")
                 except requests.exceptions.RequestException as e:
@@ -378,151 +651,74 @@ def show_game_details():
                 except Exception as e:
                     st.error(f"Beklenmedik API hatası: {str(e)}")
 
-def save_feedback(data):
-    df = pd.DataFrame([data])
-    df.to_csv("feedback.csv", mode='a', header=False, index=False)
-
-def load_feedback():
-    try:
-        return pd.read_csv("feedback.csv", names=["game", "rating", "comment", "timestamp"])
-    except FileNotFoundError:
-        return pd.DataFrame()
-
 def show_game_card(game, details):
-    
+    with st.container():
+        st.markdown('<div class="game-card-container">', unsafe_allow_html=True)
+        
+        col1, col2 = st.columns([3, 4])  # Görsel için daha geniş alan (3:4 oran)
+        
+        with col1:
+            # Büyük ve net görseller
+            st.image(
+                get_optimized_image(GAME_COVERS.get(game, 'https://via.placeholder.com/800x450')), 
+                use_container_width=True
+            )
 
-    try:
-        optimized_img = f"https://images.weserv.nl/?url={GAME_COVERS.get(game, 'https://via.placeholder.com/400x225?text=Resim+Yok')}&w=400&h=225&fit=cover"
-        # HTML ID'leri ve JS fonksiyon adları için güvenli hale getir
-        # " ", ":", "'" gibi karakterleri kaldırarak güvenli bir ID oluştur
-        card_id = "".join(filter(str.isalnum, game.replace(" ", "_").replace(":", "").replace("'", "")))
-
-        # Tıklama JS kodu
-        # Streamlit'in DOM'undaki gizli text input'u bulup değerini güncelleyeceğiz.
-        # Bu, Streamlit'in değişiklik algılamasını tetikleyecektir.
-        html(f"""
-        <script>
-            function handleClick('{card_id}')() {{
-                // Ana penceredeki gizli st.text_input'u bul.
-                // st.text_input'a verdiğimiz '__clicked_game_placeholder__' label'ı aria-label olarak kullanılır.
-                const hiddenInput = window.parent.document.querySelector('input[aria-label="__clicked_game_placeholder__"]');
-                if (hiddenInput) {{
-                    hiddenInput.value = '{game}';
-                    // Input değerinin değiştiğini Streamlit'e bildirmek için bir 'input' olayı tetikle.
-                    // Streamlit bu olayı dinler ve bir değişiklik olduğunda yeniden çalışır.
-                    const event = new Event('input', {{ bubbles: true }});
-                    hiddenInput.dispatchEvent(event);
-
-                    // Detaylar bölümüne kaydır
-                    const detailsSection = window.parent.document.getElementById('details-section');
-                    if (detailsSection) {{
-                        detailsSection.scrollIntoView({{
-                            behavior: 'smooth'
-                        }});
-                    }}
-                }}
-            }}
-        </script>
-        """, height=0) # Bu html bileşenini görünmez yapıyoruz.
-
-        # Kart HTML
-        st.markdown(f"""
-        <div class="game-card" id="{card_id}">
-            <div class="clickable-overlay" onclick="handleClick('{card_id}')()"></div>
-            <img src="{optimized_img}" style="width:100%;height:180px;object-fit:cover;">
-            <div style="padding:12px;">
-                <h4 style="margin:0;color:#4a90e2;">{game}</h4>
-                <div style="font-size:14px;color:#888;margin-top:8px;">
-                    ⭐ {details.get('metacritic', 'N/A')} | 📅 {details.get('release', 'N/A')}
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    except Exception as e:
-        st.error(f"Oyun kartı oluşturulurken hata: {str(e)}")
-        # Hata durumunda alternatif bir kart göster
-        st.markdown(f"""
-        <div class="game-card">
-            <img src="https://via.placeholder.com/400x225" class="game-image">
-            <div class="game-info">
-                <div class="game-title">{game}</div>
-                <div class="game-details">⚠️ Resim veya detaylar yüklenemedi</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-# handle_game_clicks fonksiyonu kaldırıldı, çünkü doğrudan Streamlit.setComponentValue yerine gizli input kullanılıyor.
+        with col2:
+            st.markdown(f"## {game}")  # Daha büyük başlık
+            st.markdown(f"**⭐ Metacritic:** {details.get('metacritic', 'N/A')} | **📅 Çıkış Yılı:** {details.get('release', 'N/A')}")
+            st.markdown(f"**🎮 Tür:** {details.get('genre', 'N/A')}")
+            st.markdown(f"**🖥️ Platformlar:** {', '.join(details.get('platforms', ['Multiplatform']))}")
+            
+            if st.button(f"🔍 Detayları Görüntüle", key=f"btn_{game}"):
+                st.session_state["selected_game"] = game
+                st.rerun()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # ----------------------
 # CSS STİLLERİ 
 # ----------------------
 st.markdown("""
 <style>
+    /* Pusula temalı renk paleti */
+    :root {
+        --primary: #1e3a8a;  /* koyu mavi */
+        --secondary: #d4af37; /* altın rengi */
+        --accent: #8b0000;   /* koyu kırmızı */
+    }
     
-    .game-card {
-        position: relative;
-        border-radius: 10px;
-        overflow: hidden;
-        transition: transform 0.3s, box-shadow 0.3s;
-        cursor: pointer;
-        background: #1a1a1a;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    .game-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-    }
-    .clickable-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 2; /* Kartın üzerindeki tıklanabilir alanı sağlar */
-    }
-    /* Diğer CSS'ler */
     .custom-header {
-        color: #4a90e2; /* Mavi tonu */
+        color: var(--primary);
         text-align: center;
-        padding: 10px;
+        font-size: 3rem;
         margin-bottom: 20px;
-        border-bottom: 2px solid #4a90e2;
+        background: linear-gradient(90deg, var(--primary), var(--secondary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
-    .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
-        font-size:1.1rem;
-        font-weight: bold;
+    
+    /* Buton renkleri */
+    .stButton > button {
+        background: linear-gradient(45deg, var(--primary), var(--accent));
     }
-    .sidebar-card {
-        background: #2a2a2a;
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    
+    /* Sidebar başlığı */
+    .sidebar-header {
+        color: var(--secondary);
+        border-bottom: 2px solid var(--secondary);
     }
-    .badge {
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 0.75em;
-        margin-left: 8px;
-        background: #4a90e225;
-        color: #4a90e2;
-    }
-    .live-dot {
-        height: 10px;
-        width: 10px;
-        background-color: #ff4b4b;
-        border-radius: 50%;
+    
+    /* Pusula animasyonu */
+    .compass-icon {
+        animation: rotate 8s linear infinite;
         display: inline-block;
-        animation: pulse 1.5s infinite;
+        font-size: 2rem;
     }
-    @keyframes pulse {
-        0% { transform: scale(0.95); opacity: 1; }
-        70% { transform: scale(1.1); opacity: 0.7; }
-        100% { transform: scale(0.95); opacity: 1; }
-    }
-    .stProgress > div > div > div > div {
-        background-color: #4a90e2; /* İlerleme çubuğu rengi */
+    
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -531,27 +727,14 @@ st.markdown("""
 # ANA UYGULAMA
 # ----------------------
 def main():
-    st.markdown("<h1 class='custom-header'>Game Advisor Pro</h1>", unsafe_allow_html=True)
-    selected_game = st.text_input("__clicked_game_placeholder__", key="selected_game", value="", label_visibility="collapsed")
-    
-    st.write("Seçilen oyun:", st.session_state.get("selected_game", "Henüz seçilmedi"))
-
-    
-
+    # Session state ilk tanımlama
     if "selected_game" not in st.session_state:
         st.session_state.selected_game = None
-    
-    if "__last_clicked_game_from_js__" not in st.session_state:
-        st.session_state.__last_clicked_game_from_js__ = ""
-      
-    # Hata veren 'hidden_game_click_detector' key'ini dinamik hale getirerek çakışmayı önlüyoruz.
-    # Bu, Streamlit'in her yeniden çalışma döngüsünde benzersiz bir key oluşturmasını sağlar.
-    dynamic_key = f"hidden_game_click_detector_{datetime.now().timestamp()}" 
 
-    
-    
-    if st.session_state.selected_game is not None and st.session_state.selected_game != "":
-        st.markdown(f'<div id="details-section"></div>', unsafe_allow_html=True)
+    st.markdown("<h1 class='custom-header'>Oyun Pusulası</h1>", unsafe_allow_html=True)
+
+    # Eğer bir oyun seçildiyse, detaylar gösterilsin
+    if st.session_state.selected_game:
         show_game_details()
 
     st.subheader("🔍 Trend Karşılaştırması İçin Oyunları Seçin")
@@ -559,7 +742,6 @@ def main():
         "Karşılaştırılacak oyun isimlerini virgülle ayırarak girin:",
         placeholder="Örn: Cyberpunk 2077, Elden Ring, FIFA 23",
         key="game_input_1"
-
     )
 
     if user_input:
@@ -609,46 +791,47 @@ def main():
                 - İnternet bağlantısı sorunu
                 """)
 
-    
-    key=dynamic_key
+    # Filtreleme seçenekleri
     with st.container():
         col1, col2, col3 = st.columns(3)
         with col1:
-            search_query = st.text_input("🔍 Oyun Ara"), key == "game_input_2"
+            search_query = st.text_input("🔍 Oyun Ara", key="game_input_2")
         with col2:
-            selected_genre = st.selectbox("🎮 Tür Seçin", ["Tümü", "Aksiyon", "RPG", "Strateji"])
+            selected_genre = st.selectbox("🎮 Tür Seçin", ["Tümü", "Aksiyon", "RPG", "Strateji", "FPS", "Macera", 
+                                                         "Survival Horror", "Spor", "Simülasyon", "Battle Royale", 
+                                                         "MMO", "Platform", "Fighting"])
         with col3:
             min_score = st.slider("⭐ Minimum Puan", 0, 100, 75)
 
-    tab1, tab2, tab3, tab4, = st.tabs([
-    "🏠 Ana Sayfa", 
-    "💬 Değerlendirmeler", 
-    "📈 Trendler", 
-    "📊 İstatistikler", 
-     
-])
+    # Sekmeler
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🏠 Ana Sayfa", 
+        "💬 Değerlendirmeler", 
+        "📈 Trendler", 
+        "📊 İstatistikler",
+        "🎥 Yayıncı Araçları"
+    ])
 
     with tab1:
-         search_text = search_query[0] if isinstance(search_query, tuple) else search_query
+        # Filtrelenmiş oyunlar
+        filtered_games = [
+            (game, details) for game, details in game_database.items()
+            if (not search_query or search_query.lower() in game.lower())
+            and (selected_genre == "Tümü" or details["genre"] == selected_genre)
+            and details["metacritic"] >= min_score
+        ]
 
-    filtered_games = [
-        (game, details) for game, details in game_database.items()
-    if search_text.lower() in game.lower() and
-    (selected_genre == "Tümü" or details["genre"] == selected_genre) and
-    (details["metacritic"] >= min_score)
-    ]
-    
-
-    if not filtered_games:
-        st.warning("🚨 Filtrelerinize uygun oyun bulunamadı!")
-    else:
-        cols = st.columns(3)
-        for idx, (game, details) in enumerate(filtered_games):
-            with cols[idx % 3]:
-                show_game_card(game, details)
-
+        if not filtered_games:
+            st.warning("🚨 Filtrelerinize uygun oyun bulunamadı!")
+        else:
+            # 3 sütunlu grid
+            cols = st.columns(3)
+            for idx, (game, details) in enumerate(filtered_games):
+                with cols[idx % 3]:
+                    show_game_card(game, details)
 
     with tab2:
+        # Değerlendirme formu
         with st.form("feedback_form"):
             cols = st.columns([2, 1, 1])
             selected_game_feedback = cols[0].selectbox("Oyun Seçin", list(game_database.keys()))
@@ -667,6 +850,7 @@ def main():
                 else:
                     st.error("❌ Lütfen en az 20 karakterlik yorum yazınız")
 
+        # Geçmiş değerlendirmeler
         feedback_df = load_feedback()
         if not feedback_df.empty:
             st.subheader("📜 Geçmiş Değerlendirmeler")
@@ -677,8 +861,11 @@ def main():
             st.info("ℹ️ Henüz değerlendirme bulunmamaktadır")
 
     with tab3:
+        # Tekil trend analizi
         st.subheader("🔍 Tekil Trend Analizi")
-        keyword_single = st.text_input("Analiz Edilecek Oyun/Kategori Adı:", placeholder="Örn: League of Legends", key="single_trend_keyword")
+        keyword_single = st.text_input("Analiz Edilecek Oyun/Kategori Adı:", 
+                                      placeholder="Örn: League of Legends", 
+                                      key="single_trend_keyword")
 
         if st.button("Trendleri Getir", key="get_single_trend"):
             if keyword_single:
@@ -715,8 +902,10 @@ def main():
             else:
                 st.warning("Lütfen bir anahtar kelime girin.")
 
+        # Çoklu trend karşılaştırma
         st.subheader("🏷️ Çoklu Trend Karşılaştırma")
-        comparison_keywords = st.text_input("Karşılaştırılacak anahtar kelimeleri virgülle ayırın (en fazla 5):", key="multi_trend_keywords")
+        comparison_keywords = st.text_input("Karşılaştırılacak anahtar kelimeleri virgülle ayırın (en fazla 5):", 
+                                           key="multi_trend_keywords")
         if st.button("Karşılaştır", key="compare_trends"):
             keywords = [kw.strip() for kw in comparison_keywords.split(",") if kw.strip()]
             if len(keywords) > 5:
@@ -755,8 +944,8 @@ def main():
                         st.error(f"Hata: {str(e)}")
                         st.info("Trend verilerini getirirken bir sorun oluştu. Anahtar kelimelerinizi kontrol edin.")
 
-
     with tab4:
+        # İstatistikler sekmesi
         feedback_df = load_feedback()
         if not feedback_df.empty:
             col1, col2 = st.columns(2)
@@ -778,233 +967,230 @@ def main():
                 )
                 st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("ℹ️ Henüz yeterli değerlendirme verisi bulunmamaktadır.")   
-with st.sidebar:
-    st.markdown("""
-    <style>
-        .badge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.75em;
-            margin-left: 8px;
-        }
-        .live-dot {
-            height: 10px;
-            width: 10px;
-            background-color: #ff4b4b;
-            border-radius: 50%;
-            display: inline-block;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(0.95); }
-            70% { transform: scale(1.1); }
-            100% { transform: scale(0.95); }
-        }
-        .sidebar-card {
-            background: #2a2a2a;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-    </style>
-    """, unsafe_allow_html=True)
+            st.info("ℹ️ Henüz yeterli değerlendirme verisi bulunmamaktadır.")
+    with tab5:
+        st.header("🎮 Yayıncı Araçları")
+    st.markdown("Oyun yayıncıları için özel analiz ve planlama araçları")
+    
+    # Alt sekmeler oluştur
+    stream_tab1, stream_tab2, stream_tab3 = st.tabs([
+        "⏰ Yayın Saati Analizi",
+        "📅 Yayın Planlama",
+        "📱 Sosyal Medya Analizi"
+    ])
+    
+    with stream_tab1:
+        st.subheader("En İyi Yayın Saatleri Analizi")
+        game_for_time = st.selectbox("Oyun Seçin", list(game_database.keys()), key="time_game")
+        
+        if st.button("Analiz Et", key="analyze_stream_time"):
+            result = get_best_stream_times(game_for_time)
+            if result:
+                st.success(f"**{game_for_time}** için en iyi yayın saatleri: **{result['best_hours']}**")
+                
+                # Grafik oluştur
+                fig = px.bar(
+                    x=result['chart_data'].index, 
+                    y=result['chart_data'].values,
+                    labels={'x': 'Saat (24h)', 'y': 'Ortalama Popülerlik'},
+                    title=f"Günlük Popülerlik - {game_for_time}",
+                    text=result['chart_data'].values
+                )
+                fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("Bu oyun için yeterli veri bulunamadı.")
+    
+    with stream_tab2:
+        schedule_stream()  # Yayın planlama fonksiyonunu çağır
+    
+    with stream_tab3:
+        social_engagement()  # Sosyal medya analiz fonksiyonunu çağır
 
+# ----------------------
+# YAN PANEL
+# ----------------------
+with st.sidebar:
+    # Pusula animasyonlu başlık
+    st.markdown("""
+    <div style="text-align:center; margin-bottom:30px;">
+        <h1 class="sidebar-header" style="font-size:2rem; margin:0;">Oyun Pusulası</h1>
+        <div style="font-size:1.5rem; margin-top:10px; animation: rotate 8s linear infinite;">🧭</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Kullanıcı profili kartı
     with st.container():
         st.markdown("<div class='sidebar-card'>", unsafe_allow_html=True)
-
-        col1, col2 = st.columns([1,3])
+        
+        col1, col2 = st.columns([1, 2])
         with col1:
-            st.image("https://cdn-icons-png.flaticon.com/512/686/686589.png", width=50)
+            st.image("https://cdn-icons-png.flaticon.com/512/5976/5976236.png", width=60)
         with col2:
             st.markdown(f"""
-            <div style="line-height:1.2">
-                <h4 style="margin:0;color:#4a90e2">Merhaba, Oyuncu!</h4>
-                <div style="font-size:0.8em;color:#888">
+            <div style="line-height:1.3">
+                <h4 style="margin:0;color:#6a89cc;">Merhaba, Oyuncu!</h4>
+                <div style="font-size:0.85em;color:#777;">
                     Seviye: <strong>28</strong>
-                    <span class="badge" style="background:#4a90e225;color:#4a90e2">+3 Yeni Rozet</span>
+                    <span style="background:#6a89cc20;color:#6a89cc;padding:3px 10px;border-radius:15px;font-size:0.75em">+3 Rozet</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
         st.progress(0.65, text="Seviye İlerlemesi (%65)")
 
+        # İstatistikler
         st.markdown("""
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0;">
-            <div style="text-align:center">
-                <div style="font-size:1.2em">🎮 142</div>
-                <div style="font-size:0.7em;color:#888">Oynanan</div>
+        <div style="display:flex; justify-content:space-between; margin:15px 0;">
+            <div style="text-align:center; flex:1;">
+                <div style="font-size:1.3em; color:#6a89cc;">🎮 142</div>
+                <div style="font-size:0.75em;color:#888">Oynanan</div>
             </div>
-            <div style="text-align:center">
-                <div style="font-size:1.2em">⭐ 4.8</div>
-                <div style="font-size:0.7em;color:#888">Ortalama</div>
+            <div style="text-align:center; flex:1;">
+                <div style="font-size:1.3em; color:#f8c291;">⭐ 4.8</div>
+                <div style="font-size:0.75em;color:#888">Ortalama</div>
             </div>
-            <div style="text-align:center">
-                <div style="font-size:1.2em">🏆 23</div>
-                <div style="font-size:0.7em;color:#888">Başarı</div>
+            <div style="text-align:center; flex:1;">
+                <div style="font-size:1.3em; color:#82ccdd;">🏆 23</div>
+                <div style="font-size:0.75em;color:#888">Başarı</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
+        
         st.markdown("</div>", unsafe_allow_html=True)
-
+    
+    # Canlı Etkinlikler
     with st.container():
         st.markdown("<div class='sidebar-card'>", unsafe_allow_html=True)
         st.markdown("### 🔥 Canlı Etkinlikler")
 
         st.markdown(f"""
-        <div style="margin: 8px 0; padding: 8px; border-left: 3px solid #4a90e2; background: #4a90e210">
-            <div style="display:flex; justify-content:space-between">
+        <div style="margin: 15px 0; padding: 12px; background: rgba(255, 75, 75, 0.1); border-radius: 10px; border-left: 4px solid #ff4b4b;">
+            <div style="display:flex; justify-content:space-between; align-items:center">
                 <div>
-                    <span class="live-dot"></span>
-                    <strong style="color:#4a90e2">FPS Challenge</strong>
+                    <span style="background:#ff4b4b;border-radius:50%;width:10px;height:10px;display:inline-block;"></span>
+                    <strong style="color:#ff4b4b">FPS Challenge</strong>
                 </div>
-                <span style="font-size:0.8em;color:#888">3h left</span>
+                <span style="font-size:0.8em;color:#ff4b4b;background:rgba(255,75,75,0.2);padding:2px 8px;border-radius:12px;">3h left</span>
             </div>
-            <div style="font-size:0.8em">
-                🎯 5.4K katılımcı | 🏆 $2K ödül
+            <div style="font-size:0.8em;margin-top:8px">
+                🎯 <span style="color:#777">5.4K katılımcı</span> | 🏆 <span style="color:#777">$2K ödül</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
-
+        
         st.markdown(f"""
-        <div style="margin: 8px 0; padding: 8px; border-left: 3px solid #ff4b4b; background: #ff4b4b10">
-            <div style="display:flex; justify-content:space-between">
+        <div style="margin: 15px 0; padding: 12px; background: rgba(155, 89, 182, 0.1); border-radius: 10px; border-left: 4px solid #9b59b6;">
+            <div style="display:flex; justify-content:space-between; align-items:center">
                 <div>
-                    <span class="live-dot"></span>
-                    <strong style="color:#ff4b4b">Cosplay Yarışması</strong>
+                    <span style="background:#9b59b6;border-radius:50%;width:10px;height:10px;display:inline-block;"></span>
+                    <strong style="color:#9b59b6">Cosplay Yarışması</strong>
                 </div>
-                <span style="font-size:0.8em;color:#888">2gün kaldı</span>
+                <span style="font-size:0.8em;color:#9b59b6;background:rgba(155,89,182,0.2);padding:2px 8px;border-radius:12px;">2gün kaldı</span>
             </div>
-            <div style="font-size:0.8em">
-                🎭 1.2K katılımcı | 📸 En iyi 10'a oy ver
+            <div style="font-size:0.8em;margin-top:8px">
+                🎭 <span style="color:#777">1.2K katılımcı</span> | 📸 <span style="color:#777">En iyi 10'a oy ver</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
-
+        
         st.markdown("</div>", unsafe_allow_html=True)
-
+    
+    # Size Özel Öneriler
     with st.container():
         st.markdown("<div class='sidebar-card'>", unsafe_allow_html=True)
         st.markdown("### 🎯 Size Özel Öneriler")
 
-        st.markdown(f"""
-        <div style="display:flex; align-items:center; margin:8px 0; padding:8px; background:#2a2a2a; border-radius:8px">
-            <img src="{get_optimized_image(GAME_COVERS['Cyberpunk 2077'])}" width="40" style="border-radius:4px">
-            <div style="margin-left:12px">
-                <div style="font-size:0.9em"><strong>Cyberpunk 2077</strong></div>
-                <div style="font-size:0.7em;color:#888">⏳ Son oynama: 2 gün önce</div>
+        # Öneri 1
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            st.image(get_optimized_image(GAME_COVERS["Cyberpunk 2077"], width=1000), width=1000)
+        with col2:
+            st.markdown("""
+            <div>
+                <div style="font-weight:bold;margin-bottom:5px;font-size:0.9em">Cyberpunk 2077</div>
+                <div style="font-size:0.8em;color:#777;">
+                    <div>⏳ Son oynama: 2 gün önce</div>
+                </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown(f"""
-        <div style="display:flex; align-items:center; margin:8px 0; padding:8px; background:#2a2a2a; border-radius:8px">
-            <img src="{get_optimized_image(GAME_COVERS['The Witcher 3: Wild Hunt'])}" width="40" style="border-radius:4px">
-            <div style="margin-left:12px">
-                <div style="font-size:0.9em"><strong>The Witcher 3</strong></div>
-                <div style="font-size:0.7em;color:#888">🎮 85% uyumluluk</div>
+            """, unsafe_allow_html=True)
+        
+        st.divider()
+        
+        # Öneri 2
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            st.image(get_optimized_image(GAME_COVERS["The Witcher 3: Wild Hunt"], width=1000), width=1000)
+        with col2:
+            st.markdown("""
+            <div>
+                <div style="font-weight:bold;margin-bottom:5px;font-size:0.9em">The Witcher 3</div>
+                <div style="font-size:0.8em;color:#777;">
+                    <div>🎮 Uyumluluk: %85</div>
+                </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
-
+            """, unsafe_allow_html=True)
+        
         st.markdown("</div>", unsafe_allow_html=True)
-
+    
+    # Topluluğa Katılın
     with st.container():
         st.markdown("<div class='sidebar-card'>", unsafe_allow_html=True)
         st.markdown("### 🌐 Topluluğa Katılın")
-
-        social_cols = st.columns(4)
-        social_platforms = [
-            ("Discord", "https://cdn-icons-png.flaticon.com/512/9062/9062704.png", "#5865F2", "https://discord.gg/your-community-link"),
-            ("Reddit", "https://cdn-icons-png.flaticon.com/512/3670/3670157.png", "#FF4500", "https://www.reddit.com/r/your-subreddit"),
-            ("Twitter", "https://cdn-icons-png.flaticon.com/512/733/733579.png", "#1DA1F2", "https://twitter.com/your-handle"),
-            ("YouTube", "https://cdn-icons-png.flaticon.com/512/1384/1384060.png", "#FF0000", "https://www.youtube.com")
-        ]
-
-        for (name, icon, color, url), col in zip(social_platforms, social_cols):
-            with col:
-                st.markdown(f"""
-                <a href="{url}"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   style="display:block;text-align:center">
-                    <img src="{icon}"
-                         width="24"
-                         style="filter: drop-shadow(0 2px 4px {color}40)"
-                         title="{name}">
-                </a>
-                """, unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-
-# ----------------------
-# YAN PANEL (GELİŞMİŞ)
-# ----------------------
-with st.sidebar:
-    st.markdown("<div class='sidebar-card'>", unsafe_allow_html=True)
-    st.markdown("### 🎯 Kişiselleştirilmiş Öneriler")
-    
-    # Basit öneri algoritması
-    liked_game = st.selectbox("⭐ Beğendiğiniz bir oyun seçin", 
-                            list(game_database.keys()))
-    
-    if st.button("Benzer Oyunları Göster"):
-        target_genre = game_database[liked_game]["genre"]
-        target_score = game_database[liked_game]["metacritic"]
         
-        recommendations = [
-            (game, details) for game, details in game_database.items()
-            if details["genre"] == target_genre 
-            and abs(details["metacritic"] - target_score) <= 10
-            and game != liked_game
-        ][:3]
+        # Sosyal medya ikonları
+        st.markdown("""
+        <div class="social-icons" style="display: flex; justify-content: space-between; margin: 20px 0;">
+            <a href="https://discord.gg" target="_blank" class="social-icon" style="color: #7289DA">🎮</a>
+            <a href="https://twitter.com" target="_blank" class="social-icon" style="color: #1DA1F2">🐦</a>
+            <a href="https://youtube.com" target="_blank" class="social-icon" style="color: #FF0000">▶️</a>
+            <a href="https://twitch.tv" target="_blank" class="social-icon" style="color: #9146FF">📺</a>
+            <a href="https://reddit.com" target="_blank" class="social-icon" style="color: #FF4500">🟥</a>
+        </div>
+        """, unsafe_allow_html=True)
         
-        if recommendations:
-            for game, details in recommendations:
-                st.markdown(f"""
-                <div style="padding:10px; margin:5px 0; background:#2a2a2a; border-radius:8px">
-                    <div style="font-size:0.9em">🎮 {game}</div>
-                    <div style="font-size:0.8em;color:#888">
-                        ⭐ {details['metacritic']} | 📅 {details['release']}
+    
+    # Kişiselleştirilmiş Öneriler
+    with st.container():
+        st.markdown("<div class='sidebar-card'>", unsafe_allow_html=True)
+        st.markdown("### 🎮 Kişiselleştirilmiş Öneriler")
+        
+        liked_game = st.selectbox("⭐ Beğendiğiniz bir oyun seçin", 
+                                list(game_database.keys()))
+        
+        if st.button("Benzer Oyunları Göster"):
+            target_genre = game_database[liked_game]["genre"]
+            target_score = game_database[liked_game]["metacritic"]
+            
+            recommendations = [
+                (game, details) for game, details in game_database.items()
+                if details["genre"] == target_genre 
+                and abs(details["metacritic"] - target_score) <= 10
+                and game != liked_game
+            ][:3]
+            
+            if recommendations:
+                for game, details in recommendations:
+                    st.markdown(f"""
+                    <div style="padding:10px; margin:5px 0; background:rgba(106,137,204,0.1); border-radius:8px">
+                        <div style="font-size:0.9em; font-weight:500;">🎮 {game}</div>
+                        <div style="font-size:0.8em;color:#777;">
+                            ⭐ {details['metacritic']} | 📅 {details['release']}
+                        </div>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.info("Benzer oyun bulunamadı")
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("Benzer oyun bulunamadı")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
     
-    st.markdown("</div>", unsafe_allow_html=True)
+    # Footer
     st.markdown("""
-    <style>
-        .badge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.75em;
-            margin-left: 8px;
-        }
-        .live-dot {
-            height: 10px;
-            width: 10px;
-            background-color: #ff4b4b;
-            border-radius: 50%;
-            display: inline-block;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(0.95); }
-            70% { transform: scale(1.1); }
-            100% { transform: scale(0.95); }
-        }
-        .sidebar-card {
-            background: #2a2a2a;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-    </style>
+    <div style="text-align:center;margin-top:30px;font-size:0.8em;color:#888">
+        <div>Oyun Pusulası © 2025</div>
+        <div>Oyun dünyasında doğru yönünüz</div>
+    </div>
     """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
-    main();
+    main()
