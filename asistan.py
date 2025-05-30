@@ -1058,7 +1058,39 @@ with st.sidebar:
         """, unsafe_allow_html=True)
         
         st.markdown("</div>", unsafe_allow_html=True)
-    
+     # Kişiselleştirilmiş Öneriler
+    with st.container():
+        st.markdown("<div class='sidebar-card'>", unsafe_allow_html=True)
+        st.markdown("### 🎮 Kişiselleştirilmiş Öneriler")
+        
+        liked_game = st.selectbox("⭐ Beğendiğiniz bir oyun seçin", 
+                                list(game_database.keys()))
+        
+        if st.button("Benzer Oyunları Göster"):
+            target_genre = game_database[liked_game]["genre"]
+            target_score = game_database[liked_game]["metacritic"]
+            
+            recommendations = [
+                (game, details) for game, details in game_database.items()
+                if details["genre"] == target_genre 
+                and abs(details["metacritic"] - target_score) <= 10
+                and game != liked_game
+            ][:3]
+            
+            if recommendations:
+                for game, details in recommendations:
+                    st.markdown(f"""
+                    <div style="padding:10px; margin:5px 0; background:rgba(106,137,204,0.1); border-radius:8px">
+                        <div style="font-size:0.9em; font-weight:500;">🎮 {game}</div>
+                        <div style="font-size:0.8em;color:#777;">
+                            ⭐ {details['metacritic']} | 📅 {details['release']}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("Benzer oyun bulunamadı")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
     # Canlı Etkinlikler
     with st.container():
         st.markdown("<div class='sidebar-card'>", unsafe_allow_html=True)
@@ -1138,51 +1170,17 @@ with st.sidebar:
         st.markdown("<div class='sidebar-card'>", unsafe_allow_html=True)
         st.markdown("### 🌐 Topluluğa Katılın")
         
-        # Sosyal medya ikonları
         st.markdown("""
-        <div class="social-icons" style="display: flex; justify-content: space-between; margin: 20px 0;">
-            <a href="https://discord.gg" target="_blank" class="social-icon" style="color: #7289DA">🎮</a>
-            <a href="https://twitter.com" target="_blank" class="social-icon" style="color: #1DA1F2">🐦</a>
-            <a href="https://youtube.com" target="_blank" class="social-icon" style="color: #FF0000">▶️</a>
-            <a href="https://twitch.tv" target="_blank" class="social-icon" style="color: #9146FF">📺</a>
-            <a href="https://reddit.com" target="_blank" class="social-icon" style="color: #FF4500">🟥</a>
-        </div>
-        """, unsafe_allow_html=True)
-        
-    
-    # Kişiselleştirilmiş Öneriler
-    with st.container():
-        st.markdown("<div class='sidebar-card'>", unsafe_allow_html=True)
-        st.markdown("### 🎮 Kişiselleştirilmiş Öneriler")
-        
-        liked_game = st.selectbox("⭐ Beğendiğiniz bir oyun seçin", 
-                                list(game_database.keys()))
-        
-        if st.button("Benzer Oyunları Göster"):
-            target_genre = game_database[liked_game]["genre"]
-            target_score = game_database[liked_game]["metacritic"]
-            
-            recommendations = [
-                (game, details) for game, details in game_database.items()
-                if details["genre"] == target_genre 
-                and abs(details["metacritic"] - target_score) <= 10
-                and game != liked_game
-            ][:3]
-            
-            if recommendations:
-                for game, details in recommendations:
-                    st.markdown(f"""
-                    <div style="padding:10px; margin:5px 0; background:rgba(106,137,204,0.1); border-radius:8px">
-                        <div style="font-size:0.9em; font-weight:500;">🎮 {game}</div>
-                        <div style="font-size:0.8em;color:#777;">
-                            ⭐ {details['metacritic']} | 📅 {details['release']}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("Benzer oyun bulunamadı")
-        
-        st.markdown("</div>", unsafe_allow_html=True)
+<a href="https://www.youtube.com/channel/..." target="_blank">
+    <img src="https://cdn-icons-png.flaticon.com/512/1384/1384060.png" width="32" style="margin-right:30px;">
+</a>
+<a href="https://discord.gg/..." target="_blank">
+    <img src="https://cdn-icons-png.flaticon.com/512/2111/2111370.png" width="32" style="margin-right:30px;">
+</a>
+<a href="https://www.twitch.tv/..." target="_blank">
+    <img src="https://cdn-icons-png.flaticon.com/512/2111/2111668.png" width="32" style="margin-right:30px;">
+</a>
+""", unsafe_allow_html=True)
     
     # Footer
     st.markdown("""
