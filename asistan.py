@@ -20,8 +20,8 @@ GAME_COVERS = {
 
     # RPG
     "The Witcher 3: Wild Hunt": "https://cdn.akamai.steamstatic.com/steam/apps/292030/header.jpg",
-    "Elden Ring": "https://image.api.playstation.com/vulcan/ap/rnd/202108/0410/4oBNK4UcD8sR7klc8JCT9iST.png",
-    "Final Fantasy VII Remake": "https://image.api.playstation.com/vulcan/ap/rnd/202008/1020/T45iRN1bhiWcJUzST6UFGBvO.png",
+    "Elden Ring": "https://www.misternoob.com/wp-content/uploads/2022/03/Elden-Ring-Inceleme-1.jpg",
+    "Final Fantasy VII Remake": "https://t.ctcdn.com.br/e-lFM4udMeFpGh6ZEy7H0zq0IM8=/56x0:1021x543/640x360/smart/i380061.png",
     "Dragon Age: Inquisition": "https://cdn.akamai.steamstatic.com/steam/apps/1222690/header.jpg",
 
     # Strateji
@@ -36,13 +36,13 @@ GAME_COVERS = {
     "Call of Duty: Modern Warfare II": "https://cdn.akamai.steamstatic.com/steam/apps/1938090/header.jpg",
 
     # Macera
-    "The Legend of Zelda: Tears of the Kingdom": "https://assets.nintendo.com/image/upload/ar_16:9,c_lpad,w_1240/b_white/f_auto/q_auto/ncom/software/switch/70010000063709/32b858e0948e48be9a84d70d35274c7ed7d0a1aacdc45d7d0b0d9e0cb9a3d340",
+    "The Legend of Zelda: Tears of the Kingdom": "https://blog.monsternotebook.com.tr/wp-content/uploads/The-Legend-of-Zelda-Tears-of-the-Kingdom-Oyun-Incelemesi.jpeg",
     "Red Dead Redemption 2": "https://cdn.akamai.steamstatic.com/steam/apps/1174180/header.jpg",
-    "Uncharted 4: A Thief's End": "https://image.api.playstation.com/vulcan/ap/rnd/202201/0711/8vekWyQAjUIPhq5k8wB6Tj3s.png",
+    "Uncharted 4: A Thief's End": "https://bibersa.com/wp-content/uploads/2022/11/Uncharted-4-Turkce-seslendirme-kadrosu.jpg",
 
     # Survival Horror
     "Resident Evil 4 Remake": "https://cdn.akamai.steamstatic.com/steam/apps/2050650/header.jpg",
-    "The Last of Us Part I": "https://image.api.playstation.com/vulcan/ap/rnd/202206/0720/eEczyEMDd2BLa3dtkGJVE9At.png",
+    "The Last of Us Part I": "https://sm.ign.com/t/ign_nl/cover/t/the-last-o/the-last-of-us-part-1_86g7.1200.jpg",
 
     # Spor
     "FIFA 23": "https://cdn.akamai.steamstatic.com/steam/apps/1811260/header.jpg",
@@ -53,12 +53,12 @@ GAME_COVERS = {
     "Cities: Skylines": "https://cdn.akamai.steamstatic.com/steam/apps/255710/header.jpg",
 
     # Battle Royale
-    "Fortnite": "https://cdn2.unrealengine.com/egs-social-fortnite-1920x1080-1920x1080-87971829e331.png",
+    "Fortnite": "https://cdn.antaranews.com/cache/1200x800/2025/04/10/gim.jpg",
     "Apex Legends": "https://cdn.akamai.steamstatic.com/steam/apps/1172470/header.jpg",
 
     # MMO
     "Final Fantasy XIV": "https://cdn.akamai.steamstatic.com/steam/apps/39210/header.jpg",
-    "World of Warcraft: Dragonflight": "https://bnetcmsus-a.akamaihd.net/cms/blog_header/dh/DH6B2UZ8HZGH1671044479341.jpg",
+    "World of Warcraft: Dragonflight": "https://www.btgunlugu.com/wp-content/uploads/2022/11/fg-gewr-1-1.jpg",
 
     # Platform
     "Hollow Knight": "https://cdn.akamai.steamstatic.com/steam/apps/367520/header.jpg",
@@ -70,9 +70,9 @@ GAME_COVERS = {
     
     # Ek oyunlar
     "Grand Theft Auto V": "https://cdn.akamai.steamstatic.com/steam/apps/271590/header.jpg",
-    "Minecraft": "https://cdn.akamai.steamstatic.com/steam/apps/322330/header.jpg",
-    "League of Legends": "https://cdn.akamai.steamstatic.com/steam/apps/41700/header.jpg",
-    "Valorant": "https://cdn.akamai.steamstatic.com/steam/apps/1276810/header.jpg",
+    "Minecraft": "https://static0.gamerantimages.com/wordpress/wp-content/uploads/2025/02/minecraft-key-art-feature.jpg",
+    "League of Legends": "https://www.creocommunity.com.tr/wp-content/uploads/2024/08/Yeni-League-of-Legends-yamasi-solo-koridordaki-ADClerde-eslestirme-iyilestirmeleri.jpg",
+    "Valorant": "https://www.riotgames.com/darkroom/1440/8d5c497da1c2eeec8cffa99b01abc64b:5329ca773963a5b739e98e715957ab39/ps-f2p-val-console-launch-16x9.jpg",
     "Counter-Strike: Global Offensive": "https://cdn.akamai.steamstatic.com/steam/apps/730/header.jpg",
     "Among Us": "https://cdn.akamai.steamstatic.com/steam/apps/945360/header.jpg",
     "Animal Crossing: New Horizons": "https://assets.nintendo.com/image/upload/ar_16:9,c_lpad,w_1240/b_white/f_auto/q_auto/ncom/software/switch/70010000027669/3319e2c1cae6d3e80d88a5da0b482d7f6c7a97cacf5b200a1c0a6a5b0d3ad956",
@@ -970,14 +970,12 @@ def main():
             st.info("ℹ️ Henüz yeterli değerlendirme verisi bulunmamaktadır.")
     with tab5:
         st.header("🎮 Yayıncı Araçları")
-    st.markdown("Oyun yayıncıları için özel analiz ve planlama araçları")
-    
-    # Alt sekmeler oluştur
-    stream_tab1, stream_tab2, stream_tab3 = st.tabs([
+        st.markdown("Oyun yayıncıları için özel analiz ve planlama araçları") 
+        stream_tab1, stream_tab2, stream_tab3 = st.tabs([
         "⏰ Yayın Saati Analizi",
         "📅 Yayın Planlama",
         "📱 Sosyal Medya Analizi"
-    ])
+        ])
     
     with stream_tab1:
         st.subheader("En İyi Yayın Saatleri Analizi")
